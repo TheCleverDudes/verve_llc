@@ -1,4 +1,4 @@
-name: Sync Inflow Data
+name: Sync Order Date Data
 
 on:
   schedule:
