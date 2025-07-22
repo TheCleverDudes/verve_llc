@@ -40,15 +40,13 @@ def get_recent_sale_details(from_date_str, to_date_str):
     url = f"{API_BASE_URL}/salelist"
     all_extracted_details = []
     page = 1
-    
-    # Convert string dates to datetime objects for comparison
-    from_date = datetime.strptime(from_date_str, "%Y-%m-%d")
-    to_date = datetime.strptime(to_date_str, "%Y-%m-%d") + timedelta(days=1)  # Include the entire end day
 
     print(f"Fetching sales from {from_date_str} to {to_date_str} with pagination...")
 
     while True:
         params = {
+            "FromDate": from_date_str,
+            "ToDate": to_date_str,
             "Page": page,
             "Limit": PAGE_SIZE
         }
@@ -56,41 +54,31 @@ def get_recent_sale_details(from_date_str, to_date_str):
         print(f"  Fetching page {page} with limit {PAGE_SIZE}...")
         response = requests.get(url, headers=HEADERS, params=params, verify=False)
         
+        # This sleep is crucial: it ensures there's a delay AFTER each page fetch
         time.sleep(API_CALL_DELAY_SECONDS) 
 
         if response.status_code != 200:
             print(f"[ERROR] Failed to fetch sale list on page {page}: {response.text}")
+            # If an error occurs, we return what we've collected so far, or an empty list if it's the first page
             return all_extracted_details if all_extracted_details else []
 
         sales_from_list = response.json().get("SaleList", [])
         
         if not sales_from_list:
             print(f"  No more sales found on page {page}. End of pagination.")
-            break
+            break # No more sales, exit the loop
 
         for sale in sales_from_list:
-            if "SaleID" in sale and "OrderDate" in sale and sale["OrderDate"]:
-                try:
-                    # Parse the order date from the sale
-                    order_date_str = sale["OrderDate"].split('T')[0]  # Get just the date part
-                    order_date = datetime.strptime(order_date_str, "%Y-%m-%d")
-                    
-                    # Only include sales within our date range
-                    if from_date <= order_date < to_date:
-                        all_extracted_details.append({
-                            "SaleID": sale["SaleID"],
-                            "OrderDate": sale.get("OrderDate"),
-                            "CustomerID": sale.get("CustomerID"),
-                            "Customer": sale.get("Customer"),
-                            "OrderNumber": sale.get("OrderNumber")
-                        })
-                except Exception as e:
-                    print(f"  Error processing order date for sale {sale.get('SaleID')}: {e}")
-                    continue
-        
+            if "SaleID" in sale:
+                all_extracted_details.append({
+                    "SaleID": sale["SaleID"],
+                    "OrderDate": sale.get("OrderDate"), # Use .get() in case it's missing
+                    "CustomerID": sale.get("CustomerID"),
+                    "Customer": sale.get("Customer"),
+                    "OrderNumber": sale.get("OrderNumber") # Also useful for logging/identifying
+                })
         page += 1
     
-    print(f"Found {len(all_extracted_details)} sales within the specified date range.")
     return all_extracted_details
 
 # === STEP 2: UPDATE AdditionalAttributes.OrderDate ===
