@@ -24,3 +24,6 @@ jobs:
 
       - name: Run sync
         run: python main.py
+        env:
+          DEAR_API_KEY: ${{ secrets.DEAR_API_KEY }}
+          DEAR_ACCOUNT_ID: ${{ secrets.DEAR_ACCOUNT_ID }}
